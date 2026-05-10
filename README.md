@@ -12,30 +12,6 @@ The platform is designed to seamlessly handle event registration, solo-participa
 - **All Events Archive**: A dedicated page to browse all past and active hackathons.
 
 ---
-
-## 👑 Admin Guide
-
-The entire platform is heavily data-driven and controlled via the **Django Admin Panel**.
-
-### 1. Accessing the Panel
-Navigate to `http://localhost:8000/admin/` and log in with your superuser credentials.
-
-### 2. Managing Events (`Hackathon Events`)
-- Create new hackathons here. 
-- You can write comprehensive rules using Markdown.
-- **Important**: The frontend hero section will always display the event that has the `is_active` checkbox ticked.
-
-### 3. Reviewing Registrations (`Hackathon Registrations`)
-- When a user registers (either as a team lead or by clicking "Join as Solo"), they appear here.
-- You can view their **Primary Role** and **Top Skills**.
-- Use this list to manually pair solo participants into official teams for the event.
-
-### 4. Reviewing Proposals (`Idea Submissions`)
-- When a community member uses the "Propose Hackathon" button on the frontend, their pitch lands here.
-- You can review their proposed title, problem statement, and target audience to brainstorm your next official sprint!
-
----
-
 ## 🗺️ Development Roadmap
 
 We are continuously iterating on Hacka-MD. The next major features planned for development include:
