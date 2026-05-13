@@ -9,8 +9,8 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: ${{ secrets.GCP_REGION }}
   ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
-  BACKEND_SERVICE: ${{ secrets.CLOUDRUN_SERVICE_NAME }}
-  MIGRATION_JOB: ${{ secrets.CLOUDRUN_MIGRATION_JOB }}
+  BACKEND_SERVICE: hackathon-backend
+  MIGRATION_JOB: hackathon-db-migrate
   FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT_ID }}
   VITE_API_URL: ${{ secrets.PRODUCTION_API_URL }}
 
