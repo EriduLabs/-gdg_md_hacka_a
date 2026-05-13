@@ -1,0 +1,102 @@
+name: Deploy Hacka-MD
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION }}
+  ARTIFACT_REPO: ${{ secrets.GCP_ARTIFACT_REPO }}
+  BACKEND_SERVICE: ${{ secrets.CLOUDRUN_SERVICE_NAME }}
+  MIGRATION_JOB: ${{ secrets.CLOUDRUN_MIGRATION_JOB }}
+  FIREBASE_PROJECT: ${{ secrets.FIREBASE_PROJECT_ID }}
+  VITE_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+
+jobs:
+  deploy-backend-and-migrate:
+    name: Build, Migrate, and Deploy Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker Auth for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_PATH="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/backend:${{ github.sha }}"
+          docker build -t $IMAGE_PATH .
+          docker push $IMAGE_PATH
+          echo "IMAGE_PATH=$IMAGE_PATH" >> $GITHUB_ENV
+
+      - name: Run Database Migration Job
+        run: |
+          # Create or update the Cloud Run job with the newly built image
+          gcloud run jobs update ${{ env.MIGRATION_JOB }} \
+            --image ${{ env.IMAGE_PATH }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --command "python" \
+            --args "manage.py,migrate" \
+            --set-env-vars DB_HOST=${{ secrets.DB_HOST }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }},DB_NAME=${{ secrets.DB_NAME }}
+            
+          # Execute the migration job and wait for it to complete
+          gcloud run jobs execute ${{ env.MIGRATION_JOB }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --wait
+
+      - name: Deploy Backend to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image ${{ env.IMAGE_PATH }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --allow-unauthenticated
+
+  deploy-frontend:
+    name: Build and Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-backend-and-migrate
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: ${{ env.VITE_API_URL }}
+        run: npm run build
+
+      - name: Authenticate to Google Cloud (For Firebase)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Deploy Frontend to Firebase Hosting
+        working-directory: ./frontend
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project ${{ env.FIREBASE_PROJECT }} --force

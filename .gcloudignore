@@ -1,0 +1,9 @@
+.git
+.gitignore
+.venv
+frontend
+__pycache__
+*.pyc
+datadump.json
+.dockerignore
+node_modules

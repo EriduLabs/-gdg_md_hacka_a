@@ -1,0 +1,10 @@
+.venv
+.git
+frontend
+db.sqlite3
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+datadump.json
+.env

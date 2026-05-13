@@ -20,3 +20,6 @@ venv.bak/
 # IDEs
 .vscode/
 .idea/
+
+# ADK
+.env

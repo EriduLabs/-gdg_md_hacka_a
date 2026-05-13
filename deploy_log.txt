@@ -1,0 +1,17 @@
+﻿python.exe : Building using Dockerfile and deploying container to Cloud Run service [hackathon-backend] in project 
+[hacka-md] region [us-central1]
+At C:\Users\Eridu\AppData\Local\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.ps1:114 char:3
++   & "$cloudsdk_python" $run_args_array
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Building using ...n [us-central1]:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Building and deploying new service...
+Validating configuration.......done
+Uploading sources......................................................................................................
+..................done
+Building Container.....................................................................................................
+.......................................................................................................................
+.........................................................................failed
+Deployment failed
+ERROR: (gcloud.run.deploy) Build failed; check build logs for details

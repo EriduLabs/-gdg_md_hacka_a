@@ -8,6 +8,8 @@ class HackathonEvent(models.Model):
     build_duration = models.CharField(max_length=255, default="48 Hours")
     demo_time = models.CharField(max_length=255, default="Sunday, 1:00 PM")
     rules = models.TextField(blank=True, help_text="List the rules and playbook here.")
+    description = models.TextField(blank=True, default="Hackathon Event")
+    judging_date = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -31,6 +33,8 @@ class HackathonRegistration(models.Model):
     status = models.CharField(max_length=50, default='Looking for Team')
     role = models.CharField(max_length=100, blank=True, null=True, help_text="e.g. Developer, Designer, Project Manager")
     skills = models.TextField(blank=True, null=True)
+    score = models.IntegerField(default=0)
+    progress_status = models.CharField(max_length=50, default='Just Started')
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -50,3 +54,43 @@ class IdeaJoinRequest(models.Model):
 
     def __str__(self):
         return f"{self.user.username} wants to join {self.idea.proposed_title}"
+
+class GDGCategory(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True, null=True)
+    order = models.IntegerField(default=0, help_text="Order in which to display categories")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "GDG Categories"
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+class GDGGuide(models.Model):
+    category = models.ForeignKey(GDGCategory, on_delete=models.CASCADE, related_name='guides')
+    title = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255, unique=True, help_text="URL friendly name (e.g., 'getting-started-with-gcp')")
+    content = models.TextField(help_text="Markdown content for the guide")
+    order = models.IntegerField(default=0, help_text="Order in which to display guides within a category")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['category__order', 'order', 'title']
+
+    def __str__(self):
+        return f"{self.title} ({self.category.name})"
+
+class DiscussionPost(models.Model):
+    event = models.ForeignKey(HackathonEvent, on_delete=models.CASCADE, related_name='discussions')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='discussions')
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.event.title[:20]}"
