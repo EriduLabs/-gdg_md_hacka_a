@@ -94,9 +94,20 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+db_url = os.environ.get('DATABASE_URL')
+if not db_url and os.environ.get('DB_HOST'):
+    db_user = os.environ.get('DB_USER', '')
+    db_pass = os.environ.get('DB_PASS', '')
+    db_name = os.environ.get('DB_NAME', '')
+    db_host = os.environ.get('DB_HOST', '')
+    if db_host.startswith('/cloudsql/'):
+        db_url = f"mysql://{db_user}:{db_pass}@/{db_name}?unix_socket={db_host}"
+    else:
+        db_url = f"mysql://{db_user}:{db_pass}@{db_host}/{db_name}"
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        default=db_url or f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600
     )
 }
