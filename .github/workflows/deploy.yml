@@ -43,11 +43,12 @@ jobs:
 
       - name: Run Database Migration Job
         run: |
-          # Fetch Cloud SQL instance from the existing backend service
-          CLOUD_SQL_INSTANCE=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }} \
-            --format="value(spec.template.metadata.annotations['run.googleapis.com/cloudsql-instances'])" || echo "")
+          # Fetch Cloud SQL instance and DATABASE_URL from the existing backend service
+          SERVICE_JSON=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region ${{ env.REGION }} --project ${{ env.PROJECT_ID }} --format="json")
+          
+          CLOUD_SQL_INSTANCE=$(echo "$SERVICE_JSON" | python -c "import sys, json; print(json.load(sys.stdin).get('metadata', {}).get('annotations', {}).get('run.googleapis.com/cloudsql-instances', ''))")
+          
+          DATABASE_URL=$(echo "$SERVICE_JSON" | python -c "import sys, json; print(next((e['value'] for e in json.load(sys.stdin)['spec']['template']['spec']['containers'][0].get('env', []) if e['name'] == 'DATABASE_URL'), ''))")
           
           # Prepare common arguments
           COMMON_ARGS="--image ${{ env.IMAGE_PATH }} --region ${{ env.REGION }} --project ${{ env.PROJECT_ID }} --command python --args manage.py,migrate"
@@ -56,13 +57,20 @@ jobs:
             COMMON_ARGS="$COMMON_ARGS --set-cloudsql-instances=$CLOUD_SQL_INSTANCE"
           fi
           
+          if [ -n "$DATABASE_URL" ]; then
+            COMMON_ARGS="$COMMON_ARGS --set-env-vars DATABASE_URL=$DATABASE_URL"
+          else
+            # Fallback to secrets if the service doesn't have DATABASE_URL set
+            COMMON_ARGS="$COMMON_ARGS --set-env-vars DB_HOST=${{ secrets.DB_HOST }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }},DB_NAME=${{ secrets.DB_NAME }}"
+          fi
+          
           # Check if job exists
           if gcloud run jobs describe ${{ env.MIGRATION_JOB }} --region ${{ env.REGION }} --project ${{ env.PROJECT_ID }} > /dev/null 2>&1; then
             echo "Job exists. Updating..."
-            gcloud run jobs update ${{ env.MIGRATION_JOB }} $COMMON_ARGS --set-env-vars DB_HOST=${{ secrets.DB_HOST }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }},DB_NAME=${{ secrets.DB_NAME }}
+            gcloud run jobs update ${{ env.MIGRATION_JOB }} $COMMON_ARGS
           else
             echo "Job does not exist. Creating..."
-            gcloud run jobs create ${{ env.MIGRATION_JOB }} $COMMON_ARGS --set-env-vars DB_HOST=${{ secrets.DB_HOST }},DB_USER=${{ secrets.DB_USER }},DB_PASS=${{ secrets.DB_PASS }},DB_NAME=${{ secrets.DB_NAME }}
+            gcloud run jobs create ${{ env.MIGRATION_JOB }} $COMMON_ARGS
           fi
             
           # Execute the migration job and wait for it to complete
